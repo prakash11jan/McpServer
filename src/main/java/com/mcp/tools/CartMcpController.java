@@ -65,13 +65,21 @@ public class CartMcpController {
         SseEmitter emitter = new SseEmitter();
         new Thread(() -> {
             try {
-                List<Map<String, String>> toolList = new ArrayList<>();
-                tools.keySet().forEach(name -> toolList.add(Map.of("name", name)));
-                emitter.send(Map.of(
+                List<Map<String, String>> toolList = List.of(
+                        Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
+                        Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
+                        Map.of("name", "getCarts", "description", "Retrieve all cart items."),
+                        Map.of("name", "getCartTotal", "description", "Get total price of cart items.")
+                );
+
+                Map<String, Object> serverInfo = Map.of(
                         "event", "server_info",
                         "server_label", "hybris-cart-mcp",
                         "tools", toolList
-                ));
+                );
+
+                emitter.send(serverInfo);
+                emitter.complete();  // complete immediately after sending
             } catch (Exception e) {
                 emitter.completeWithError(e);
             }
