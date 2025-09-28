@@ -8,6 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 @RestController
@@ -60,31 +61,40 @@ public class CartMcpController {
     }
 
     // SSE endpoint for OpenAI MCP handshake
-    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
-        SseEmitter emitter = new SseEmitter(0L);
-        try {
-            List<Map<String, String>> toolList = List.of(
-                    Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
-                    Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
-                    Map.of("name", "getCarts", "description", "Retrieve all cart items."),
-                    Map.of("name", "getCartTotal", "description", "Get total price of cart items.")
-            );
+        SseEmitter emitter = new SseEmitter(0L); // no timeout
 
-            Map<String, Object> serverInfo = Map.of(
-                    "event", "server_info",
-                    "server_label", "hybris-cart-mcp",
-                    "tools", toolList
-            );
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                Map<String, Object> serverInfo = Map.of(
+                        "event", "server_info",
+                        "server_label", "hybris-cart-mcp",
+                        "tools", List.of(
+                                Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
+                                Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
+                                Map.of("name", "getCarts", "description", "Retrieve all cart items."),
+                                Map.of("name", "getCartTotal", "description", "Get total price of cart items.")
+                        )
+                );
 
-            emitter.send(SseEmitter.event()
-                    .name("server_info")
-                    .id("1")
-                    .data(serverInfo));
-        } catch (Exception e) {
-            emitter.completeWithError(e);
-        }
-        return emitter; // don’t close ittt
+                emitter.send(SseEmitter.event()
+                        .name("server_info")
+                        .id("1")
+                        .data(serverInfo));
+
+                // 🔑 keep connection alive
+                while (true) {
+                    Thread.sleep(15000);
+                    emitter.send(SseEmitter.event().name("ping").data("{}"));
+                }
+
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
     }
 
 
