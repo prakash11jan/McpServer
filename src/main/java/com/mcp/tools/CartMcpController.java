@@ -62,11 +62,9 @@ public class CartMcpController {
     // SSE endpoint for OpenAI MCP handshake
     @GetMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sse() {
-        SseEmitter emitter = new SseEmitter();
-
+        SseEmitter emitter = new SseEmitter(0L); // no timeout
         new Thread(() -> {
             try {
-                // Build tool list
                 List<Map<String, String>> toolList = List.of(
                         Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
                         Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
@@ -80,12 +78,14 @@ public class CartMcpController {
                         "tools", toolList
                 );
 
-                // Send as proper SSE
                 emitter.send(SseEmitter.event()
                         .name("server_info")
                         .data(serverInfo)
                         .id("1"));
-                // Keep the connection open
+
+                // Keep the connection open instead of completing immediately
+                // Do NOT call emitter.complete() here
+
             } catch (Exception e) {
                 emitter.completeWithError(e);
             }
@@ -93,6 +93,7 @@ public class CartMcpController {
 
         return emitter;
     }
+
 
 
     // Tool invocation endpoint
