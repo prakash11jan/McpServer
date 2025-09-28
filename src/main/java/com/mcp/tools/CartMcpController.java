@@ -84,7 +84,7 @@ public class CartMcpController {
         } catch (Exception e) {
             emitter.completeWithError(e);
         }
-        return emitter; // don’t close it
+        return emitter; // don’t close ittt
     }
 
 
