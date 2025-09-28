@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @RestController
-@RequestMapping("/mcp")
+@RequestMapping("/sse")
 public class CartMcpController {
 
     private static final Map<String, Double> PRODUCTS = Map.of(
@@ -60,38 +60,31 @@ public class CartMcpController {
     }
 
     // SSE endpoint for OpenAI MCP handshake
-    @GetMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sse() {
-        SseEmitter emitter = new SseEmitter(0L); // no timeout
-        new Thread(() -> {
-            try {
-                List<Map<String, String>> toolList = List.of(
-                        Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
-                        Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
-                        Map.of("name", "getCarts", "description", "Retrieve all cart items."),
-                        Map.of("name", "getCartTotal", "description", "Get total price of cart items.")
-                );
+    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream() {
+        SseEmitter emitter = new SseEmitter(0L);
+        try {
+            List<Map<String, String>> toolList = List.of(
+                    Map.of("name", "addToCart", "description", "Add a product to the shopping cart."),
+                    Map.of("name", "removeCart", "description", "Remove a product from the shopping cart."),
+                    Map.of("name", "getCarts", "description", "Retrieve all cart items."),
+                    Map.of("name", "getCartTotal", "description", "Get total price of cart items.")
+            );
 
-                Map<String, Object> serverInfo = Map.of(
-                        "event", "server_info",
-                        "server_label", "hybris-cart-mcp",
-                        "tools", toolList
-                );
+            Map<String, Object> serverInfo = Map.of(
+                    "event", "server_info",
+                    "server_label", "hybris-cart-mcp",
+                    "tools", toolList
+            );
 
-                emitter.send(SseEmitter.event()
-                        .name("server_info")
-                        .data(serverInfo)
-                        .id("1"));
-
-                // Keep the connection open instead of completing immediately
-                // Do NOT call emitter.complete() here
-
-            } catch (Exception e) {
-                emitter.completeWithError(e);
-            }
-        }).start();
-
-        return emitter;
+            emitter.send(SseEmitter.event()
+                    .name("server_info")
+                    .id("1")
+                    .data(serverInfo));
+        } catch (Exception e) {
+            emitter.completeWithError(e);
+        }
+        return emitter; // don’t close it
     }
 
 
